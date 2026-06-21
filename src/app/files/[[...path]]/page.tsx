@@ -3,12 +3,14 @@ import BreadcrumbNav from "@/components/BreadcrumbNav";
 import FileListContainer from "@/components/FileListContainer";
 
 interface FilesPageProps {
-  params: Promise<{ path: string[] }>;
+  params: Promise<{ path?: string[] }>;
 }
 
 export default async function FilesPage({ params }: FilesPageProps) {
   const { path: pathSegments } = await params;
-  const currentPath = pathSegments.map(decodeURIComponent).join("/");
+  // オプショナルcatch-allなので、/files（パスなし）ではpathSegmentsがundefined。
+  // その場合はデータルート直下を表示する。
+  const currentPath = (pathSegments ?? []).map(decodeURIComponent).join("/");
 
   return (
     <AppShell>

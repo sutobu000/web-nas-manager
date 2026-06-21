@@ -1,6 +1,15 @@
 "use client";
 
-import type { DirectoryListing } from "@/types/files";
+import type { DirectoryListing, StorageDrive } from "@/types/files";
+
+/**
+ * Fetch the configured storage drives from the API.
+ */
+export async function getDrives(): Promise<StorageDrive[]> {
+  const res = await fetch("/api/drives");
+  if (!res.ok) return [];
+  return res.json() as Promise<StorageDrive[]>;
+}
 
 /**
  * Fetch directory listing from the API.

@@ -30,6 +30,13 @@ function getSecret(): Uint8Array {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // 本番でJWT_SECRETが未設定なら、無認証での全公開を防ぐため全リクエストを停止する（fail-close）。
+  // /loginや静的アセットも含めて503を返し、運用者にJWT_SECRETの設定を強制する。
+  if (!process.env.JWT_SECRET && process.env.NODE_ENV === "production") {
+    console.error("[SECURITY] JWT_SECRET is not set. Refusing all requests. Set JWT_SECRET to enable authentication.");
+    return serviceUnavailable(request);
+  }
+
   // 認証不要なパスはそのまま通す
   if (PUBLIC_PATHS.includes(pathname)) {
     return NextResponse.next();
@@ -40,11 +47,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // JWT_SECRETが未設定の場合、起動時警告を出しつつ認証をスキップ（開発用）
+  // 開発時のみ: JWT_SECRET未設定なら認証をスキップ（本番は上で停止済み）。
   if (!process.env.JWT_SECRET) {
-    if (process.env.NODE_ENV === "production") {
-      console.error("[SECURITY WARNING] JWT_SECRET is not set. All access is unrestricted. Set JWT_SECRET in your environment variables.");
-    }
     return NextResponse.next();
   }
 
@@ -77,6 +81,24 @@ function handleUnauthorized(request: NextRequest): NextResponse {
   const loginUrl = new URL("/login", request.url);
   loginUrl.searchParams.set("redirect", pathname);
   return NextResponse.redirect(loginUrl);
+}
+
+/**
+ * Fail-closed response used when the server is misconfigured
+ * (JWT_SECRET missing in production). Returns 503 for every request.
+ */
+function serviceUnavailable(request: NextRequest): NextResponse {
+  const message = "Server is not configured: JWT_SECRET is required.";
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { error: "SERVICE_UNAVAILABLE", message },
+      { status: 503 }
+    );
+  }
+  return new NextResponse(message, {
+    status: 503,
+    headers: { "content-type": "text/plain; charset=utf-8" },
+  });
 }
 
 export const config = {

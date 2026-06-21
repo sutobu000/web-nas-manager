@@ -1,0 +1,5 @@
+[
+  { "id": "photos", "name": "Photos", "icon": "hdd", "description": "Main photo library" },
+  { "id": "backup", "name": "Backup", "icon": "hdd", "description": "Backup drive" },
+  { "id": "work", "name": "Work SSD", "icon": "ssd" }
+]

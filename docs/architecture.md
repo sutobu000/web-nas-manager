@@ -15,11 +15,12 @@
 │  ├─ App Router (RSC)            │
 │  │   ├─ /                       │  Drive list
 │  │   ├─ /login                  │  Login page
-│  │   ├─ /files/[...path]        │  File browser
+│  │   ├─ /files/[[...path]]      │  File browser
 │  │   ├─ /search                 │  Search results
 │  │   ├─ /favorites              │  Favorites list
 │  │   └─ /tags/[tag]             │  Files by tag
 │  └─ API Routes (/api)           │
+│      ├─ /api/drives             │  Drive list (drives.json)
 │      ├─ /api/files              │  List / delete
 │      ├─ /api/files/upload       │
 │      ├─ /api/files/mkdir        │
@@ -36,11 +37,9 @@
            ▼
 ┌─────────────────────────────────┐
 │  Docker Volumes                 │
-│  /data/HDD-001 ← E:\       │  Main HDD
-│  /data/HDD-002 ← F:\       │  Backup HDD
-│  /data/SSD-001 ← G:\       │  Work SSD 1
-│  /data/SSD-002 ← H:\       │  Work SSD 2
-│  /cache/thumbnails  ← volume   │  Thumbnail cache
+│  /data/<id>  ← host path        │  One mount per drives.json entry
+│  /config/drives.json ← ro mount │  Drive definitions (UI)
+│  /cache/thumbnails  ← volume    │  Thumbnail cache
 └─────────────────────────────────┘
 ```
 
@@ -51,24 +50,25 @@ docker-compose.yml
 └─ nas-filemanager (Next.js, node:20-alpine)
     Port: 3000
     Volumes:
-      /data/HDD-001 ← E:\ (Main HDD)
-      /data/HDD-002 ← F:\ (Backup HDD)
-      /data/SSD-001 ← G:\ (Work SSD 1)
-      /data/SSD-002 ← H:\ (Work SSD 2)
+      /data/<id>  ← host path  (one per drives.json entry; <id> matches the drive id)
+      /config/drives.json  ← ./drives.json:ro  (drive definitions shown in the UI)
       /cache/thumbnails  ← named volume (thumbnail cache)
 ```
 
 ## Volume Mapping
 
-Docker Compose mounts Windows drives directly. On Docker Desktop with WSL2 backend, use Windows-style paths in the Compose file.
+Drives are defined in `drives.json` (see the README). For each entry, mount the host directory to `/data/<id>` in `docker-compose.yml`, where `<id>` matches the drive's `id`. Add or remove mounts to match your own setup — there is no fixed number of drives.
 
-| Docker path | Windows drive | Description |
-|-------------|---------------|-------------|
-| `/data/HDD-001` | `E:\` | Main storage |
-| `/data/HDD-002` | `F:\` | Backup |
-| `/data/SSD-001` | `G:\` | Working SSD |
-| `/data/SSD-002` | `H:\` | Working SSD |
+| Docker path | Host path (example) | Description |
+|-------------|---------------------|-------------|
+| `/data/photos` | `/mnt/photos` (or `E:\photos`) | Drive whose id is `photos` |
+| `/data/backup` | `/mnt/backup` (or `F:\backup`) | Drive whose id is `backup` |
+| `/config/drives.json` | `./drives.json` (read-only) | Drive definitions for the UI |
 | `/cache/thumbnails` | named volume | Thumbnail cache |
+
+When no `drives.json` is present, the app shows `/data` as a single drive, so a minimal setup only needs one mount to `/data`.
+
+On Docker Desktop with the WSL2 backend you can use Windows-style host paths (e.g. `E:\photos`).
 
 ## API Design
 
@@ -272,6 +272,8 @@ function validatePath(requestedPath: string): string {
 ### Authentication
 
 JWT stored in an HttpOnly cookie. All file API routes check the session cookie via middleware. Login is rate-limited: 5 failed attempts per IP trigger a 30-second lockout.
+
+When `JWT_SECRET` is unset, the middleware skips authentication in development for convenience, but **fails closed in production** (`NODE_ENV=production`): every request returns 503 until `JWT_SECRET` is configured.
 
 ### Upload Limits
 

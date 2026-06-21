@@ -1,17 +1,21 @@
 import AppShell from "@/components/AppShell";
 import Link from "next/link";
-import { STORAGE_DRIVES } from "@/lib/constants";
+import { loadDrives } from "@/lib/drives";
+
+// ドライブ設定を実行時に読むため、静的化を無効化する。
+export const dynamic = "force-dynamic";
 
 export default function Home() {
+  const drives = loadDrives();
   return (
     <AppShell>
       <div className="p-6">
         <h2 className="mb-6 text-2xl font-bold">Storage Drives</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STORAGE_DRIVES.map((drive) => (
+          {drives.map((drive) => (
             <Link
-              key={drive.id}
-              href={`/files/${drive.id}`}
+              key={drive.id || "root"}
+              href={drive.id ? `/files/${drive.id}` : "/files"}
               className="group rounded-xl border border-border bg-surface p-5 transition-all hover:border-primary/30 hover:shadow-lg"
             >
               <div className="mb-3 flex items-center gap-3">
@@ -52,13 +56,15 @@ export default function Home() {
                   <h3 className="font-semibold group-hover:text-primary">
                     {drive.name}
                   </h3>
-                  <p className="text-xs text-text-secondary">
-                    {drive.description}
-                  </p>
+                  {drive.description && (
+                    <p className="text-xs text-text-secondary">
+                      {drive.description}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="text-sm text-text-secondary">
-                /data/{drive.id}
+                {drive.id ? `/data/${drive.id}` : "/data"}
               </div>
             </Link>
           ))}

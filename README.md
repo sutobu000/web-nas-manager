@@ -57,30 +57,47 @@ cd web-nas-manager
 pnpm install
 ```
 
-### 2. 環境変数の設定
+### 2. ドライブを定義（drives.json）
+
+サイドバーとトップページに表示する「ドライブ」を`drives.json`で定義します。サンプルをコピーして編集してください:
 
 ```bash
-# Docker運用（本番）はプロジェクト直下の .env にコピー
+cp drives.example.json drives.json
+```
+
+```json
+[
+  { "id": "photos", "name": "Photos", "icon": "hdd", "description": "Main photo library" },
+  { "id": "backup", "name": "Backup", "icon": "ssd" }
+]
+```
+
+| フィールド | 必須 | 説明 |
+|------------|------|------|
+| `id` | 必須 | ドライブの識別子。マウント先`/data/<id>`とURL`/files/<id>`になる。使える文字は`a-z A-Z 0-9 . _ -`のみ |
+| `name` | 必須 | UIに表示される名前 |
+| `icon` | 任意 | `hdd` / `ssd`。それ以外の値や未指定はHDDアイコンで表示 |
+| `description` | 任意 | 補足テキスト |
+
+ドライブの数・名前・種別は自由です。行を増減するだけで変わります。
+
+> **設定なしでも動きます。** `drives.json`が無い場合は、`/data`全体が1つのドライブとして表示されます。
+
+### 3. 認証情報の設定
+
+```bash
 cp .env.example .env
 ```
 
-`.env`を編集（変数名は docker-compose.yml と対応します。ローカルで `next dev` する場合は同じ内容を `.env.local` に置きます）:
+`.env`を編集:
 
 ```env
-# ストレージのパス（Windowsはドライブレター、Linux/Macは /mnt/... や /Volumes/...）
-# 既定は4ドライブ分。数は自分の環境に合わせて増減できます
-HDD_001_PATH=E:\
-HDD_002_PATH=F:\
-SSD_001_PATH=G:\
-SSD_002_PATH=H:\
-
-# 認証情報
 JWT_SECRET=your-random-secret-here
 AUTH_USERNAME=admin
 AUTH_PASSWORD_HASH=$2b$10$your-bcrypt-hash
 ```
 
-認証情報の生成:
+生成コマンド:
 
 ```bash
 # JWT秘密鍵
@@ -90,42 +107,28 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 node -e "require('bcryptjs').hash('your-password', 10).then(console.log)"
 ```
 
-### 3. ドライブの設定
+### 4. ストレージのマウント
 
-既定で4ドライブ（`HDD-001` `HDD-002` `SSD-001` `SSD-002`）が定義済みです。変更する場合は`src/lib/constants.ts`の`STORAGE_DRIVES`を編集:
-
-```typescript
-export const STORAGE_DRIVES: StorageDrive[] = [
-  {
-    id: "HDD-001",         // docker-compose.ymlのマウント先 /data/<id> と一致させる
-    name: "HDD-001",       // サイドバーに表示される名前
-    path: "/data/HDD-001",
-    description: "Main HDD",
-    icon: "hdd",           // "hdd" または "ssd"
-  },
-  // HDD-002 / SSD-001 / SSD-002 と続く。必要に応じて追加・削除...
-];
-```
-
-`docker-compose.yml`のvolumesは`.env`の変数を参照します（既定のまま使えます）:
+`docker-compose.yml`の`volumes`で、各ストレージを`/data/<id>`にマウントします（`<id>`は`drives.json`の`id`と一致させる）。行を増減して自分のドライブ構成に合わせてください:
 
 ```yaml
 volumes:
-  # 形式: <ホストパス>:/data/<ドライブID>（IDはSTORAGE_DRIVESのidと一致）
-  # ホストパスは .env の HDD_001_PATH 等で指定（未設定ならE:\等にフォールバック）
-  - ${HDD_001_PATH:-E:\}:/data/HDD-001
-  - ${HDD_002_PATH:-F:\}:/data/HDD-002
-  - ${SSD_001_PATH:-G:\}:/data/SSD-001
-  - ${SSD_002_PATH:-H:\}:/data/SSD-002
+  # <ホストのパス>:/data/<id>   （<id>はdrives.jsonのidと一致）
+  - /mnt/photos:/data/photos       # Windowsなら例: - E:\photos:/data/photos
+  - /mnt/backup:/data/backup
+  # drives.json をマウント（UIのドライブ定義）
+  - ./drives.json:/config/drives.json:ro
 ```
 
-### 4. 起動
+### 5. 起動
 
 **ローカル開発:**
 
 ```bash
-# .env.local に DATA_ROOT を設定（テスト用ディレクトリ。/data の代わりに参照される）
-# 例: DATA_ROOT=./dev-data
+# next dev はプロジェクト直下の .env.local を読みます。
+# 例（.env.local）:
+#   DATA_ROOT=./dev-data            # テスト用ディレクトリを /data の代わりに参照
+#   DRIVES_CONFIG_PATH=./drives.json # drives.json をプロジェクト直下から読む
 
 pnpm dev
 # http://localhost:3000
@@ -142,13 +145,11 @@ docker compose up -d --build
 
 | 変数 | 説明 | 必須 |
 |------|------|------|
-| `HDD_001_PATH` | `/data/HDD-001` にマウントするホストパス | Docker時 |
-| `HDD_002_PATH` | `/data/HDD-002` にマウントするホストパス | Docker時 |
-| `SSD_001_PATH` | `/data/SSD-001` にマウントするホストパス | Docker時 |
-| `SSD_002_PATH` | `/data/SSD-002` にマウントするホストパス | Docker時 |
 | `JWT_SECRET` | JWT署名用の秘密鍵 | 認証有効時 |
 | `AUTH_USERNAME` | ログインユーザー名 | 認証有効時 |
 | `AUTH_PASSWORD_HASH` | パスワードのbcryptハッシュ | 認証有効時 |
+| `DRIVES_CONFIG_PATH` | `drives.json`の場所（既定: `/config/drives.json`） | 任意 |
+| `STORAGE_DRIVES_JSON` | `drives.json`の代わりにJSON文字列で定義（ファイルより優先） | 任意 |
 | `DATA_ROOT` | データルートの上書き（ローカル開発用） | 開発時 |
 | `THUMBNAIL_CACHE_DIR` | サムネイルキャッシュの上書き | 任意 |
 
@@ -156,12 +157,13 @@ docker compose up -d --build
 - Next.js（`.env.local`）: `\$`
 - Docker Compose（`.env`）: `$$`
 
-`JWT_SECRET`を設定しなければ認証はスキップされます（開発用）。
+`JWT_SECRET`を設定しない場合、開発時（`NODE_ENV`が`production`以外）は認証がスキップされます。本番（`NODE_ENV=production`）では、未設定だと全リクエストを503で停止します（無認証のまま公開されるのを防ぐfail-close）。
 
 ## API一覧
 
 | メソッド | エンドポイント | 説明 |
 |----------|---------------|------|
+| `GET` | `/api/drives` | ドライブ一覧 |
 | `GET` | `/api/files?path=` | ディレクトリ一覧 |
 | `DELETE` | `/api/files` | ファイル/フォルダ削除 |
 | `POST` | `/api/files/upload` | アップロード（最大2GB） |
@@ -190,12 +192,13 @@ docker compose up -d --build
 ## セキュリティ
 
 - 全APIでパストラバーサル対策済み
+- ドライブ`id`は安全な文字種（`a-z0-9._-`）に制限（URL・パスに使われるため）
 - アップロード上限: 2GB
 - JWT認証（HttpOnly Cookie）
 - ログインレート制限: 5回失敗で30秒ロック
 - SVGはサムネイル生成対象外（XSS防止）
 
-> **注意:** LAN内での利用を前提としています（CookieはHTTPアクセス想定で`secure`を無効化）。インターネットに公開する場合はHTTPS必須です。また`JWT_SECRET`を設定しないと認証がスキップされ、誰でもアクセスできてしまうため、本番では必ず設定してください。
+> **注意:** LAN内での利用を前提としています（CookieはHTTPアクセス想定で`secure`を無効化）。インターネットに公開する場合はHTTPS必須です。`JWT_SECRET`は本番で必須で、未設定のまま`NODE_ENV=production`で起動すると全リクエストを503で停止します（無認証公開を防ぐfail-close）。
 
 ## ライセンス
 

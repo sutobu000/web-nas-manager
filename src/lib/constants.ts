@@ -1,5 +1,3 @@
-import type { StorageDrive } from "@/types/files";
-
 /**
  * Base path for all data volumes.
  * ローカル開発時はDATA_ROOT環境変数で上書き可能。
@@ -15,40 +13,6 @@ export const THUMBNAIL_CACHE_DIR = process.env.THUMBNAIL_CACHE_DIR || "/cache/th
  * Maximum upload file size (2GB).
  */
 export const MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024;
-
-/**
- * Registered storage drives.
- */
-export const STORAGE_DRIVES: StorageDrive[] = [
-  {
-    id: "HDD-001",
-    name: "HDD-001",
-    path: "/data/HDD-001",
-    description: "Main HDD",
-    icon: "hdd",
-  },
-  {
-    id: "HDD-002",
-    name: "HDD-002",
-    path: "/data/HDD-002",
-    description: "Backup HDD",
-    icon: "hdd",
-  },
-  {
-    id: "SSD-001",
-    name: "SSD-001",
-    path: "/data/SSD-001",
-    description: "Work SSD 1",
-    icon: "ssd",
-  },
-  {
-    id: "SSD-002",
-    name: "SSD-002",
-    path: "/data/SSD-002",
-    description: "Work SSD 2",
-    icon: "ssd",
-  },
-];
 
 /**
  * Image file extensions that support thumbnails.

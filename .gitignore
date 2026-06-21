@@ -47,6 +47,9 @@ next-env.d.ts
 # env
 .env
 
+# user-specific drive config (copy drives.example.json to drives.json)
+/drives.json
+
 # temp files
 .tmp/
 

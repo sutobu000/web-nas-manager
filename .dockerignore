@@ -8,3 +8,5 @@ cache
 *.md
 .DS_Store
 .env*.local
+.env
+drives.json

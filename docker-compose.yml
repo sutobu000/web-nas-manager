@@ -7,12 +7,14 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # NASストレージのマウント（.envで環境変数を設定）
-      - ${HDD_001_PATH:-E:\}:/data/HDD-001
-      - ${HDD_002_PATH:-F:\}:/data/HDD-002
-      - ${SSD_001_PATH:-G:\}:/data/SSD-001
-      - ${SSD_002_PATH:-H:\}:/data/SSD-002
-      # サムネイルキャッシュ（named volume）
+      # Mount each storage location to /data/<id>.
+      # <id> must match an "id" in drives.json. Add or remove lines to match it.
+      # Windows hosts use drive paths, e.g. - E:\photos:/data/photos
+      - /path/to/photos:/data/photos
+      - /path/to/backup:/data/backup
+      # Drive list shown in the UI (id / display name / icon). See drives.example.json.
+      - ./drives.json:/config/drives.json:ro
+      # Thumbnail cache (named volume)
       - thumbnail-cache:/cache/thumbnails
     restart: unless-stopped
     environment:

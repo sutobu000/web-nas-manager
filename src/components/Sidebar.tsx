@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { STORAGE_DRIVES } from "@/lib/constants";
-import { getAllTags } from "@/lib/api";
+import { getAllTags, getDrives } from "@/lib/api";
+import type { StorageDrive } from "@/types/files";
 
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-function DriveIcon({ type }: { type: "hdd" | "ssd" }) {
+function DriveIcon({ type }: { type: string }) {
   if (type === "ssd") {
     return (
       <svg className="h-5 w-5 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -29,6 +29,14 @@ function DriveIcon({ type }: { type: "hdd" | "ssd" }) {
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [tags, setTags] = useState<string[]>([]);
+  const [drives, setDrives] = useState<StorageDrive[]>([]);
+
+  // ドライブ一覧を読み込み
+  useEffect(() => {
+    getDrives()
+      .then(setDrives)
+      .catch((e) => console.error("Failed to load drives:", e));
+  }, []);
 
   // タグ一覧を読み込み
   useEffect(() => {
@@ -105,11 +113,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             Drives
           </h2>
           <ul className="space-y-0.5">
-            {STORAGE_DRIVES.map((drive) => {
-              const href = `/files/${drive.id}`;
-              const isActive = pathname?.startsWith(href);
+            {drives.map((drive) => {
+              // 空idのデフォルトドライブは/filesを指す。idありは/files/<id>。
+              const href = drive.id ? `/files/${drive.id}` : "/files";
+              const isActive =
+                pathname === href || (pathname?.startsWith(href + "/") ?? false);
               return (
-                <li key={drive.id}>
+                <li key={drive.id || "root"}>
                   <Link
                     href={href}
                     onClick={onClose}
@@ -122,9 +132,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <DriveIcon type={drive.icon} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{drive.name}</div>
-                      <div className="truncate text-xs text-text-secondary">
-                        {drive.description}
-                      </div>
+                      {drive.description && (
+                        <div className="truncate text-xs text-text-secondary">
+                          {drive.description}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 </li>

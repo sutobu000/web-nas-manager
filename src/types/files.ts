@@ -35,9 +35,8 @@ export interface DirectoryListing {
 export interface StorageDrive {
   id: string;
   name: string;
-  path: string;
-  description: string;
-  icon: "hdd" | "ssd";
+  icon: string;
+  description?: string;
 }
 
 /**
