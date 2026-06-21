@@ -1,12 +1,12 @@
 {
   "name": "web-nas-manager",
   "version": "1.0.0",
-  "description": "your NAS machine + your drive enclosure で構成した自宅 NAS 用の Web ファイルマネージャー。",
+  "description": "自宅NAS向けのWebファイルマネージャー。Next.js + Docker。RAW写真プレビュー、EXIF/GPS、地図ビュー。",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

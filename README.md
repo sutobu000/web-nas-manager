@@ -60,15 +60,19 @@ pnpm install
 ### 2. 環境変数の設定
 
 ```bash
-cp .env.example .env.local
+# Docker運用（本番）はプロジェクト直下の .env にコピー
+cp .env.example .env
 ```
 
-`.env.local`を編集:
+`.env`を編集（変数名は docker-compose.yml と対応します。ローカルで `next dev` する場合は同じ内容を `.env.local` に置きます）:
 
 ```env
-# ストレージのパスを指定（自分の環境に合わせて変更）
-DRIVE_1_PATH=/path/to/your/drive1
-DRIVE_2_PATH=/path/to/your/drive2
+# ストレージのパス（Windowsはドライブレター、Linux/Macは /mnt/... や /Volumes/...）
+# 既定は4ドライブ分。数は自分の環境に合わせて増減できます
+HDD_001_PATH=E:\
+HDD_002_PATH=F:\
+SSD_001_PATH=G:\
+SSD_002_PATH=H:\
 
 # 認証情報
 JWT_SECRET=your-random-secret-here
@@ -88,45 +92,31 @@ node -e "require('bcryptjs').hash('your-password', 10).then(console.log)"
 
 ### 3. ドライブの設定
 
-`src/lib/constants.ts`の`STORAGE_DRIVES`を自分の環境に合わせて編集:
+既定で4ドライブ（`HDD-001` `HDD-002` `SSD-001` `SSD-002`）が定義済みです。変更する場合は`src/lib/constants.ts`の`STORAGE_DRIVES`を編集:
 
 ```typescript
 export const STORAGE_DRIVES: StorageDrive[] = [
   {
-    id: "Photos",          // docker-compose.ymlのマウント名と一致させる
-    name: "Photos",        // サイドバーに表示される名前
-    path: "/data/Photos",
-    description: "写真アーカイブ",
+    id: "HDD-001",         // docker-compose.ymlのマウント先 /data/<id> と一致させる
+    name: "HDD-001",       // サイドバーに表示される名前
+    path: "/data/HDD-001",
+    description: "Main HDD",
     icon: "hdd",           // "hdd" または "ssd"
   },
-  {
-    id: "Videos",
-    name: "Videos",
-    path: "/data/Videos",
-    description: "動画アーカイブ",
-    icon: "hdd",
-  },
-  // 必要に応じてドライブを追加・削除...
+  // HDD-002 / SSD-001 / SSD-002 と続く。必要に応じて追加・削除...
 ];
 ```
 
-`docker-compose.yml`のvolumesも合わせて編集:
+`docker-compose.yml`のvolumesは`.env`の変数を参照します（既定のまま使えます）:
 
 ```yaml
 volumes:
-  # 形式: <ホストパス>:/data/<ドライブID>
-  # ドライブIDはconstants.tsのSTORAGE_DRIVESのidと一致させる
-
-  # Windows:
-  - E:\:/data/Photos
-  - F:\:/data/Videos
-
-  # Linux:
-  - /mnt/hdd1:/data/Photos
-  - /mnt/ssd1:/data/Videos
-
-  # Mac:
-  - /Volumes/ExternalHDD:/data/Photos
+  # 形式: <ホストパス>:/data/<ドライブID>（IDはSTORAGE_DRIVESのidと一致）
+  # ホストパスは .env の HDD_001_PATH 等で指定（未設定ならE:\等にフォールバック）
+  - ${HDD_001_PATH:-E:\}:/data/HDD-001
+  - ${HDD_002_PATH:-F:\}:/data/HDD-002
+  - ${SSD_001_PATH:-G:\}:/data/SSD-001
+  - ${SSD_002_PATH:-H:\}:/data/SSD-002
 ```
 
 ### 4. 起動
@@ -134,8 +124,8 @@ volumes:
 **ローカル開発:**
 
 ```bash
-# .env.localにDATA_ROOTを設定（テスト用ディレクトリ）
-# DATA_ROOT=./dev-data
+# .env.local に DATA_ROOT を設定（テスト用ディレクトリ。/data の代わりに参照される）
+# 例: DATA_ROOT=./dev-data
 
 pnpm dev
 # http://localhost:3000
@@ -152,8 +142,10 @@ docker compose up -d --build
 
 | 変数 | 説明 | 必須 |
 |------|------|------|
-| `DRIVE_1_PATH` | 1番目のドライブのホストパス | Docker時 |
-| `DRIVE_2_PATH` | 2番目のドライブのホストパス | Docker時 |
+| `HDD_001_PATH` | `/data/HDD-001` にマウントするホストパス | Docker時 |
+| `HDD_002_PATH` | `/data/HDD-002` にマウントするホストパス | Docker時 |
+| `SSD_001_PATH` | `/data/SSD-001` にマウントするホストパス | Docker時 |
+| `SSD_002_PATH` | `/data/SSD-002` にマウントするホストパス | Docker時 |
 | `JWT_SECRET` | JWT署名用の秘密鍵 | 認証有効時 |
 | `AUTH_USERNAME` | ログインユーザー名 | 認証有効時 |
 | `AUTH_PASSWORD_HASH` | パスワードのbcryptハッシュ | 認証有効時 |
@@ -203,6 +195,8 @@ docker compose up -d --build
 - ログインレート制限: 5回失敗で30秒ロック
 - SVGはサムネイル生成対象外（XSS防止）
 
+> **注意:** LAN内での利用を前提としています（CookieはHTTPアクセス想定で`secure`を無効化）。インターネットに公開する場合はHTTPS必須です。また`JWT_SECRET`を設定しないと認証がスキップされ、誰でもアクセスできてしまうため、本番では必ず設定してください。
+
 ## ライセンス
 
-MIT
+MIT License — 詳細は[LICENSE](./LICENSE)を参照してください。
