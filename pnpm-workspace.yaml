@@ -1,0 +1,7 @@
+# Approve build scripts for native dependencies (pnpm >= 10).
+# Without this, `pnpm install` / `pnpm build` / `pnpm lint` stop with
+# ERR_PNPM_IGNORED_BUILDS. sharp (image processing) and unrs-resolver
+# (used by the Next.js/ESLint toolchain) ship native bindings.
+allowBuilds:
+  sharp: true
+  unrs-resolver: true
